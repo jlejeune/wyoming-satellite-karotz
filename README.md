@@ -20,15 +20,26 @@ Home Assistant uses its own speech to text and text to speech services. The cont
 
 ## Set up the rabbit
 
-The files in the `rabbit` directory are for the rabbit. Copy them to the rabbit with FTP or telnet.
+The files in the `rabbit` directory are for the rabbit. The directory `/usr` of the rabbit is flash memory and keeps its files after a reboot. When a client connects, the `inetd` program of the rabbit starts the two services.
 
-1. Run `python set_mic_gain.py` on the rabbit. The microphone records only noise at gain 0. The setting is lost at each reboot.
-2. Start the microphone service: `nohup nc -ll -p 10001 -e /path/to/mic.sh &`
-3. Start the speaker service: `nohup nc -ll -p 10002 -e /path/to/spk.sh &`
+1. Copy `karotz-mic.sh`, `karotz-spk.sh` and `set_mic_gain.py` to `/usr/scripts` on the rabbit, with FTP or telnet.
+2. Run `chmod 755 /usr/scripts/karotz-mic.sh /usr/scripts/karotz-spk.sh /usr/scripts/set_mic_gain.py` on the rabbit.
+3. Make a backup: `cp -p /usr/etc/inetd.conf /usr/etc/inetd.conf.bak`
+4. Add these two lines at the end of `/usr/etc/inetd.conf`:
 
-The services have no password. Anyone on your network can listen to the microphone while the service runs. Do not open these ports to the internet.
+```
+10001 stream tcp nowait root /usr/scripts/karotz-mic.sh karotz-mic.sh
+10002 stream tcp nowait root /usr/scripts/karotz-spk.sh karotz-spk.sh
+```
 
-The tests used `nc -ll -e` to start the services by hand. Starting them at each boot is not tested yet.
+5. Tell `inetd` to read the file again: `kill -HUP $(pidof inetd)`
+6. Make sure that the ports 23, 80, 10001 and 10002 of the rabbit accept connections.
+
+A mistake in `inetd.conf` can stop telnet, the web interface and FTP at the same time. Keep a second telnet session open until step 6 succeeds. To undo the change, copy `inetd.conf.bak` over `inetd.conf` and run `kill -HUP $(pidof inetd)` again.
+
+The microphone service sets the gain of the microphone at each connection. At gain 0 the microphone records only noise. The setting of the chip is lost at each reboot, so no other step is needed after a reboot. The services were tested after a reboot of the rabbit.
+
+The services have no password. If a computer on your network connects to port 10001, it can listen to the microphone. Do not open these ports to the internet.
 
 ## Run the container
 

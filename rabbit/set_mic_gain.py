@@ -1,7 +1,7 @@
 # Run on the rabbit with its Python 2: python set_mic_gain.py
 # Set the microphone gain and the input gain of the sound chip to 75.
 # At gain 0 the microphone records only noise. The gain is a live setting of the chip.
-# This script does not make it permanent, so run it again after each reboot.
+# The chip loses the setting at each reboot. karotz-mic.sh runs this script for each connection.
 import fcntl
 import os
 import struct
