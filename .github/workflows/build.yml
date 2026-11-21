@@ -1,0 +1,68 @@
+---
+name: Build image
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths-ignore: ["README.md", "LICENSE"]
+  pull_request:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Build for one platform and load the image. This step catches a broken install
+      # (for example a missing wyoming_satellite package) before the push.
+      - name: Build a test image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: wyoming-satellite-karotz:test
+
+      - name: Smoke test
+        run: |
+          docker run --rm --entrypoint python wyoming-satellite-karotz:test -m wyoming_satellite --help > /dev/null
+          docker run --rm --entrypoint python wyoming-satellite-karotz:test -c "import webrtc_noise_gain"
+
+      - name: Log in to ghcr.io
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=sha
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Build and push for amd64 and arm64
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
