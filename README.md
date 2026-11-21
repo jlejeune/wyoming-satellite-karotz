@@ -69,6 +69,7 @@ In Home Assistant, add the Wyoming integration. Enter the address of the contain
 
 - The microphone of the rabbit has a high noise floor. The satellite uses noise suppression and automatic gain to work around it. Speak close to the rabbit.
 - The rabbit has no echo cancellation. Its own speaker can disturb the microphone.
+- If the rabbit restarts, the microphone connection stays open on the side of the container but receives no audio. The microphone relay stops after 10 seconds without audio, and the satellite connects again. Set `KAROTZ_IDLE_SECONDS` to change the 10 seconds.
 - The upstream project wyoming-satellite is archived. This image does not receive upstream updates.
 
 ## License
